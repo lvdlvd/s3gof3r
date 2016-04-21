@@ -94,7 +94,7 @@ func newGetter(getURL url.URL, c *Config, b *Bucket) (io.ReadCloser, http.Header
 	for i := 0; i < g.c.Concurrency; i++ {
 		go g.worker()
 	}
-	go g.initChunks()
+	go g.initChunks(g.c.ReadOffset)
 	return g, resp.Header, nil
 }
 
@@ -125,9 +125,9 @@ func (g *getter) retryRequest(method, urlStr string, body io.ReadSeeker) (resp *
 	return
 }
 
-func (g *getter) initChunks() {
+func (g *getter) initChunks(offset int64) {
 	id := 0
-	for i := int64(0); i < g.contentLen; {
+	for i := offset; i < g.contentLen; {
 		size := min64(g.bufsz, g.contentLen-i)
 		c := &chunk{
 			id: id,

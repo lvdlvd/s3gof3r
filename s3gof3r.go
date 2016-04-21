@@ -59,8 +59,9 @@ type Config struct {
 	NTry         int   // maximum attempts for each part
 	Md5Check     bool  // The md5 hash of the object is stored in <bucket>/.md5/<object_key>.md5
 	// When true, it is stored on puts and verified on gets
-	Scheme    string // url scheme, defaults to 'https'
-	PathStyle bool   // use path style bucket addressing instead of virtual host style
+	Scheme     string // url scheme, defaults to 'https'
+	PathStyle  bool   // use path style bucket addressing instead of virtual host style
+	ReadOffset int64  // where to start reading in the GetReader
 }
 
 // DefaultConfig contains defaults used if *Config is nil
