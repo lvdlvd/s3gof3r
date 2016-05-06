@@ -107,7 +107,8 @@ func (s *S3) Bucket(name string) *Bucket {
 // DefaultConfig is used if c is nil
 // Callers should call Close on r to ensure that all resources are released.
 //
-// To specify an object version in a versioned bucket, the version ID may be included in the path as a url parameter. See http://docs.aws.amazon.com/AmazonS3/latest/dev/RetrievingObjectVersions.html
+// To specify an object version in a versioned bucket, the version ID may be included in the path as a url parameter.
+// See http://docs.aws.amazon.com/AmazonS3/latest/dev/RetrievingObjectVersions.html
 func (b *Bucket) GetReader(path string, c *Config) (r io.ReadCloser, h http.Header, err error) {
 	if path == "" {
 		return nil, nil, errors.New("empty path requested")

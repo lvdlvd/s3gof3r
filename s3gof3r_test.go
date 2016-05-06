@@ -3,6 +3,7 @@ package s3gof3r
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -39,7 +40,7 @@ func uploadTestFiles() {
 			go func(path string, rSize int64) {
 				err := b.putReader(path, &randSrc{Size: int(rSize)})
 				if err != nil {
-					log.Fatal(err)
+					log.Panic(err)
 				}
 				wg.Done()
 			}(tt.path, tt.rSize)
@@ -137,6 +138,45 @@ func TestPutWriter(t *testing.T) {
 	}
 }
 
+func TestReadOffset(t *testing.T) {
+
+	w, err := b.PutWriter("testreadoffset", nil, nil)
+	errComp(nil, err, t, "PutWriter")
+	for i := 0; i < 65536; i++ {
+		binary.Write(w, binary.BigEndian, uint16(i))
+	}
+	errComp(nil, w.Close(), t, nil)
+
+	for _, offs := range []int{0, 1, 2, 5, 16, 17, 1024, 1025, 16000} {
+		cfg := *DefaultConfig
+		cfg.ReadOffset = int64(offs)
+
+		r, _, err := b.GetReader("testreadoffset", &cfg)
+		errComp(nil, err, t, "GetReader")
+
+		if offs%2 == 1 {
+			var v uint8
+			binary.Read(r, binary.BigEndian, &v)
+			if v != uint8(offs/2) {
+				t.Errorf("Expected %x got %x", uint8(offs/2), v)
+			}
+			offs += 1
+		}
+
+		for i := offs / 2; i < 65536; i++ {
+			var v uint16
+			binary.Read(r, binary.BigEndian, &v)
+			if v != uint16(i) {
+				t.Errorf("Expected %d got %d", i, v)
+				break
+			}
+		}
+		errComp(nil, r.Close(), t, nil)
+
+	}
+
+}
+
 type multiTest struct {
 	path   string
 	data   io.Reader
@@ -195,7 +235,7 @@ func TestMulti(t *testing.T) {
 			r, h, err := b.GetReader(tt.path, tt.config)
 			if err != nil {
 				errComp(tt.err, err, t, tt)
-				//return
+				return
 			}
 			t.Logf("headers %v\n", h)
 			gw := ioutil.Discard
@@ -234,7 +274,7 @@ func testBucket() (*tB, error) {
 		return nil, errors.New("TEST_BUCKET must be set in environment")
 
 	}
-	s3 := New("", k)
+	s3 := New(os.Getenv("AWS_DOMAIN"), k)
 	b := tB{s3.Bucket(bucket)}
 
 	return &b, err
@@ -541,6 +581,7 @@ var regionsTests = []struct {
 	{domain: "s3.amazonaws.com", region: "us-east-1"},
 	{domain: "s3-external-1.amazonaws.com", region: "us-east-1"},
 	{domain: "s3-sa-east-1.amazonaws.com", region: "sa-east-1"},
+	{domain: "s3-eu-west-1.amazonaws.com", region: "eu-west-1"},
 }
 
 func TestRegion(t *testing.T) {

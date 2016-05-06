@@ -132,8 +132,7 @@ func (g *getter) initChunks(offset int64) {
 		c := &chunk{
 			id: id,
 			header: http.Header{
-				"Range": {fmt.Sprintf("bytes=%d-%d",
-					i, i+size-1)},
+				"Range": {fmt.Sprintf("bytes=%d-%d", i, i+size-1)},
 			},
 			start: i,
 			size:  size,
@@ -222,13 +221,13 @@ func (g *getter) Read(p []byte) (int, error) {
 	}
 	nw := 0
 	for nw < len(p) {
-		if g.bytesRead == g.contentLen {
+		if g.bytesRead == g.contentLen-g.c.ReadOffset {
 			return nw, io.EOF
-		} else if g.bytesRead > g.contentLen {
+		} else if g.bytesRead > g.contentLen-g.c.ReadOffset {
 			// Here for robustness / completeness
 			// Should not occur as golang uses LimitedReader up to content-length
 			return nw, fmt.Errorf("Expected %d bytes, received %d (too many bytes)",
-				g.contentLen, g.bytesRead)
+				g.contentLen-g.c.ReadOffset, g.bytesRead)
 		}
 
 		// If for some reason no more chunks to be read and bytes are off, error, incomplete result
@@ -300,10 +299,10 @@ func (g *getter) Close() error {
 	if g.err != nil {
 		return g.err
 	}
-	if g.bytesRead != g.contentLen {
+	if g.bytesRead != g.contentLen-g.c.ReadOffset {
 		return fmt.Errorf("read error: %d bytes read. expected: %d", g.bytesRead, g.contentLen)
 	}
-	if g.c.Md5Check {
+	if g.c.Md5Check && g.c.ReadOffset == 0 {
 		if err := g.checkMd5(); err != nil {
 			return err
 		}
